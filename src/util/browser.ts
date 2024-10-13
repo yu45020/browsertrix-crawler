@@ -399,7 +399,23 @@ export class Browser {
     const target = this.browser.target();
 
     this.firstCDP = await target.createCDPSession();
-
+    // ignore files from wp-content/uploads
+    this.browser.on('targetcreated', async (target) => {
+      const page = await target.page();
+      if (page) {
+        await page.setRequestInterception(true); // Enable request interception
+        page.on('request', (event: HTTPRequest) => {
+          const url = event.url();
+          if (url.includes('wp-content/uploads')) {
+            console.log(`Blocking JSON request: ${event.url()}`);
+            event.abort();  // Block JSON request
+          } else {
+            event.continue();  // Allow other requests to proceed
+          }
+        });
+      }
+    });
+    // end of ignore
     if (recording) {
       await this.serviceWorkerFetch();
     }
@@ -606,4 +622,7 @@ export const defaultArgs = [
   "--no-service-autorun",
   "--export-tagged-pdf",
   "--apps-keep-chrome-alive-in-tests",
+  // disable loading images
+  "--blink-settings=imagesEnabled=false",
+
 ];
